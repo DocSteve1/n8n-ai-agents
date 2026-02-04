@@ -1,0 +1,227 @@
+{
+  "name": "Entity Extraction - OpenAI + Local LLM",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "8f4d3c2a-1b2c-4d5e-9f8a-7b6c5d4e3f2a",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Input Validation & Sanitization\nconst items = $input.all();\n\nconst validated = items.map(item => {\n  const data = item.json;\n  \n  // Ensure text field exists\n  const text = (data.text || data.content || data.input || '').trim();\n  \n  if (!text) {\n    throw new Error('Text field is required and cannot be empty');\n  }\n  \n  return {\n    json: {\n      text: text,\n      id: data.id || `extract_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,\n      timestamp: new Date().toISOString(),\n      task: 'entity-extraction',\n      // Keep original for reference\n      _original: data\n    }\n  };\n});\n\nreturn validated;"
+      },
+      "id": "7e3d2c1b-4a5f-6e7d-8c9b-0a1f2e3d4c5b",
+      "name": "Validate Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "resource": "text",
+        "operation": "message",
+        "model": "gpt-4o-mini",
+        "messages": {
+          "values": [
+            {
+              "role": "user",
+              "content": "=Task: Extract entities from text\nInput: {{ $json.text }}\nOutput format: JSON with keys: persons, organizations, locations\nExample: {\"persons\": [\"John Doe\"], \"organizations\": [\"ACME Corp\"], \"locations\": [\"Berlin\"]}\n\nNow extract entities from the input above. Return ONLY the JSON, no explanation or markdown:"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.3,
+          "maxTokens": 300
+        }
+      },
+      "id": "6d2c1b0a-9f8e-7d6c-5b4a-3e2d1c0b9a8f",
+      "name": "OpenAI Extract",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1.3,
+      "position": [680, 200],
+      "credentials": {
+        "openAiApi": {
+          "id": "1",
+          "name": "OpenAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:11434/api/generate",
+        "authentication": "none",
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "nemotron-nano:9b"
+            },
+            {
+              "name": "prompt",
+              "value": "=Task: Extract entities from text\nInput: {{ $json.text }}\nOutput format: JSON with keys: persons, organizations, locations\nExample: {\"persons\": [\"John Doe\"], \"organizations\": [\"ACME Corp\"], \"locations\": [\"Berlin\"]}\n\nNow extract entities. Return ONLY the JSON:"
+            },
+            {
+              "name": "stream",
+              "value": false
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "5c1b0a9f-8e7d-6c5b-4a3e-2d1c0b9a8f7e",
+      "name": "Local LLM Extract",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse and validate OpenAI response\nconst input = $input.first().json;\nconst originalData = $('Validate Input').first().json;\n\ntry {\n  // Extract response text\n  let responseText = '';\n  if (input.message && input.message.content) {\n    responseText = input.message.content;\n  } else if (input.choices && input.choices[0]) {\n    responseText = input.choices[0].message.content;\n  } else if (typeof input === 'string') {\n    responseText = input;\n  } else {\n    throw new Error('Could not extract response text');\n  }\n  \n  // Try to parse JSON\n  let entities;\n  \n  // Remove markdown code blocks if present\n  responseText = responseText.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n  \n  // Find JSON object\n  const jsonMatch = responseText.match(/\\{[^}]*\\}/s);\n  if (jsonMatch) {\n    entities = JSON.parse(jsonMatch[0]);\n  } else {\n    entities = JSON.parse(responseText);\n  }\n  \n  // Validate structure\n  const required = ['persons', 'organizations', 'locations'];\n  const missing = required.filter(key => !entities.hasOwnProperty(key));\n  \n  if (missing.length > 0) {\n    throw new Error(`Missing required fields: ${missing.join(', ')}`);\n  }\n  \n  // Ensure arrays\n  required.forEach(key => {\n    if (!Array.isArray(entities[key])) {\n      entities[key] = [];\n    }\n  });\n  \n  return [{\n    json: {\n      success: true,\n      model: 'gpt-4o-mini',\n      entities: entities,\n      original_text: originalData.text,\n      id: originalData.id,\n      timestamp: new Date().toISOString()\n    }\n  }];\n  \n} catch (error) {\n  return [{\n    json: {\n      success: false,\n      model: 'gpt-4o-mini',\n      error: error.message,\n      raw_response: input,\n      original_text: originalData.text,\n      id: originalData.id,\n      retry_needed: true\n    }\n  }];\n}"
+      },
+      "id": "4b0a9f8e-7d6c-5b4a-3e2d-1c0b9a8f7e6d",
+      "name": "Parse OpenAI Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse and validate Local LLM response\nconst input = $input.first().json;\nconst originalData = $('Validate Input').first().json;\n\ntry {\n  // Extract response from Ollama format\n  let responseText = '';\n  if (input.response) {\n    responseText = input.response;\n  } else if (input.message) {\n    responseText = input.message;\n  } else if (typeof input === 'string') {\n    responseText = input;\n  } else {\n    throw new Error('Could not extract response text');\n  }\n  \n  // Try to parse JSON\n  let entities;\n  \n  // Remove markdown code blocks if present\n  responseText = responseText.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n  \n  // Find JSON object\n  const jsonMatch = responseText.match(/\\{[^}]*\\}/s);\n  if (jsonMatch) {\n    entities = JSON.parse(jsonMatch[0]);\n  } else {\n    entities = JSON.parse(responseText);\n  }\n  \n  // Validate structure\n  const required = ['persons', 'organizations', 'locations'];\n  const missing = required.filter(key => !entities.hasOwnProperty(key));\n  \n  if (missing.length > 0) {\n    throw new Error(`Missing required fields: ${missing.join(', ')}`);\n  }\n  \n  // Ensure arrays\n  required.forEach(key => {\n    if (!Array.isArray(entities[key])) {\n      entities[key] = [];\n    }\n  });\n  \n  return [{\n    json: {\n      success: true,\n      model: 'nemotron-nano-9b',\n      entities: entities,\n      original_text: originalData.text,\n      id: originalData.id,\n      timestamp: new Date().toISOString(),\n      tokens_used: input.eval_count || 0\n    }\n  }];\n  \n} catch (error) {\n  return [{\n    json: {\n      success: false,\n      model: 'nemotron-nano-9b',\n      error: error.message,\n      raw_response: input,\n      original_text: originalData.text,\n      id: originalData.id,\n      retry_needed: true\n    }\n  }];\n}"
+      },
+      "id": "3a9f8e7d-6c5b-4a3e-2d1c-0b9a8f7e6d5c",
+      "name": "Parse Local Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 400]
+    },
+    {
+      "parameters": {
+        "mode": "mergeByIndex"
+      },
+      "id": "2f8e7d6c-5b4a-3e2d-1c0b-9a8f7e6d5c4b",
+      "name": "Merge Results",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Compare results from both models\nconst results = $input.all();\n\nif (results.length !== 2) {\n  throw new Error('Expected 2 results to compare');\n}\n\nconst openai = results[0].json;\nconst local = results[1].json;\n\n// Calculate similarity (simple comparison)\nfunction calculateSimilarity(entities1, entities2) {\n  if (!entities1 || !entities2) return 0;\n  \n  let matches = 0;\n  let total = 0;\n  \n  ['persons', 'organizations', 'locations'].forEach(key => {\n    const set1 = new Set((entities1[key] || []).map(e => e.toLowerCase()));\n    const set2 = new Set((entities2[key] || []).map(e => e.toLowerCase()));\n    \n    const union = new Set([...set1, ...set2]);\n    const intersection = new Set([...set1].filter(x => set2.has(x)));\n    \n    if (union.size > 0) {\n      matches += intersection.size;\n      total += union.size;\n    }\n  });\n  \n  return total > 0 ? matches / total : 0;\n}\n\nconst similarity = calculateSimilarity(openai.entities, local.entities);\n\nreturn [{\n  json: {\n    id: openai.id,\n    original_text: openai.original_text,\n    timestamp: new Date().toISOString(),\n    \n    openai: {\n      success: openai.success,\n      entities: openai.entities,\n      error: openai.error\n    },\n    \n    local: {\n      success: local.success,\n      entities: local.entities,\n      error: local.error,\n      tokens_used: local.tokens_used\n    },\n    \n    comparison: {\n      similarity_score: similarity,\n      agreement_level: similarity > 0.8 ? 'high' : similarity > 0.5 ? 'medium' : 'low',\n      both_succeeded: openai.success && local.success,\n      \n      differences: {\n        persons: {\n          only_openai: openai.entities?.persons?.filter(p => \n            !local.entities?.persons?.map(x => x.toLowerCase()).includes(p.toLowerCase())\n          ) || [],\n          only_local: local.entities?.persons?.filter(p => \n            !openai.entities?.persons?.map(x => x.toLowerCase()).includes(p.toLowerCase())\n          ) || []\n        },\n        organizations: {\n          only_openai: openai.entities?.organizations?.filter(o => \n            !local.entities?.organizations?.map(x => x.toLowerCase()).includes(o.toLowerCase())\n          ) || [],\n          only_local: local.entities?.organizations?.filter(o => \n            !openai.entities?.organizations?.map(x => x.toLowerCase()).includes(o.toLowerCase())\n          ) || []\n        },\n        locations: {\n          only_openai: openai.entities?.locations?.filter(l => \n            !local.entities?.locations?.map(x => x.toLowerCase()).includes(l.toLowerCase())\n          ) || [],\n          only_local: local.entities?.locations?.filter(l => \n            !openai.entities?.locations?.map(x => x.toLowerCase()).includes(l.toLowerCase())\n          ) || []\n        }\n      }\n    }\n  }\n}];"
+      },
+      "id": "1e7d6c5b-4a3e-2d1c-0b9a-8f7e6d5c4b3a",
+      "name": "Compare Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 300]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Validate Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Input": {
+      "main": [
+        [
+          {
+            "node": "OpenAI Extract",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Local LLM Extract",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Extract": {
+      "main": [
+        [
+          {
+            "node": "Parse OpenAI Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Local LLM Extract": {
+      "main": [
+        [
+          {
+            "node": "Parse Local Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse OpenAI Response": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Local Response": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Results": {
+      "main": [
+        [
+          {
+            "node": "Compare Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {
+    "Manual Trigger": [
+      {
+        "json": {
+          "text": "Dr. Sarah Johnson from MIT published groundbreaking research on quantum computing at the Nature conference in Boston last month."
+        }
+      }
+    ]
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2026-02-04T10:00:00.000Z",
+  "versionId": "1"
+}

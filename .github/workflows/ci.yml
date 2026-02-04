@@ -1,0 +1,59 @@
+name: CI - MCP Server Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-mcp-server:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: mcp-server/package-lock.json
+    
+    - name: Install dependencies
+      run: |
+        cd mcp-server
+        npm ci
+    
+    - name: Validate JSON files
+      run: |
+        cd mcp-server/data
+        for file in *.json; do
+          echo "Validating $file..."
+          node -e "JSON.parse(require('fs').readFileSync('$file', 'utf-8'))" || exit 1
+        done
+    
+    - name: Test server startup
+      run: |
+        cd mcp-server
+        timeout 5s node server.js || if [ $? -eq 124 ]; then echo "Server started successfully"; exit 0; else exit 1; fi
+    
+    - name: Validate workflows
+      run: |
+        cd workflows
+        for file in *.json; do
+          echo "Validating workflow $file..."
+          node -e "JSON.parse(require('fs').readFileSync('$file', 'utf-8'))" || exit 1
+        done
+    
+    - name: Validate test data
+      run: |
+        cd test-data
+        for file in *.json; do
+          echo "Validating test data $file..."
+          node -e "JSON.parse(require('fs').readFileSync('$file', 'utf-8'))" || exit 1
+        done

@@ -1,0 +1,95 @@
+[
+  {
+    "id": "test_001",
+    "text": "John Smith works as Senior Engineer at Microsoft in Seattle. He joined the company in 2020.",
+    "expected": {
+      "persons": ["John Smith"],
+      "organizations": ["Microsoft"],
+      "locations": ["Seattle"]
+    },
+    "task": "entity-extraction"
+  },
+  {
+    "id": "test_002",
+    "text": "Dr. Maria Garcia from Stanford University published a groundbreaking paper on quantum computing last year in Nature journal.",
+    "expected": {
+      "persons": ["Maria Garcia"],
+      "organizations": ["Stanford University", "Nature"],
+      "locations": []
+    },
+    "task": "entity-extraction"
+  },
+  {
+    "id": "test_003",
+    "text": "The meeting between President Biden and Chancellor Scholz took place in Berlin on November 15, 2024.",
+    "expected": {
+      "persons": ["Biden", "Scholz"],
+      "organizations": [],
+      "locations": ["Berlin"]
+    },
+    "task": "entity-extraction"
+  },
+  {
+    "id": "test_004",
+    "text": "This product exceeded my expectations! The quality is outstanding and delivery was fast. Highly recommended!",
+    "expected": {
+      "sentiment": "positive"
+    },
+    "task": "sentiment"
+  },
+  {
+    "id": "test_005",
+    "text": "Terrible experience. The customer service was rude and the product broke after one week. Complete waste of money.",
+    "expected": {
+      "sentiment": "negative"
+    },
+    "task": "sentiment"
+  },
+  {
+    "id": "test_006",
+    "text": "The product is okay. It works as described but nothing special. Average quality for the price.",
+    "expected": {
+      "sentiment": "neutral"
+    },
+    "task": "sentiment"
+  },
+  {
+    "id": "test_007",
+    "text": "Please categorize this email: 'Your package has been shipped and will arrive tomorrow.'",
+    "expected": {
+      "category": "shipping"
+    },
+    "task": "classification",
+    "categories": ["support", "sales", "shipping", "billing"]
+  },
+  {
+    "id": "test_008",
+    "text": "I would like to request a refund for order #12345 as the product arrived damaged.",
+    "expected": {
+      "category": "support"
+    },
+    "task": "classification",
+    "categories": ["support", "sales", "shipping", "billing"]
+  },
+  {
+    "id": "test_009",
+    "text": "Extract data: Name: Alice Johnson, Age: 28, Email: alice@example.com, Phone: +1-555-0123, City: New York",
+    "expected": {
+      "name": "Alice Johnson",
+      "age": "28",
+      "email": "alice@example.com",
+      "phone": "+1-555-0123",
+      "city": "New York"
+    },
+    "task": "data-extraction"
+  },
+  {
+    "id": "test_010",
+    "text": "Summarize: Artificial intelligence has made significant progress in recent years. Deep learning models can now perform tasks that were once thought to require human-level intelligence, including image recognition, natural language processing, and game playing. However, these systems still face challenges in areas requiring common sense reasoning and transfer learning.",
+    "expected": {
+      "summary": "AI and deep learning have advanced significantly, excelling at specific tasks but still struggling with common sense and transfer learning."
+    },
+    "task": "summarization",
+    "max_words": "25"
+  }
+]
