@@ -4,6 +4,10 @@ This project requires the [n8n-mcp-tools](https://github.com/DEIN-USERNAME/n8n-m
 
 ### Quick Setup
 ```bash
+
+# Install this project
+git clone git@github.com:DocSteve1/n8n-ai-agents.git
+
 # Install MCP Server
 mkdir -p ~/mcp-servers
 cd ~/mcp-servers
@@ -11,6 +15,20 @@ git clone git@github.com:DocSteve1/n8n-mcp-tools.git
 cd n8n-mcp-tools
 npm install
 ```
+
+### Test ob server.js läuft
+```bash
+cd ~/n8n-ai-agents/mcp-server
+npm start
+```
+
+Siehst du: "n8n AI Agents MCP Server running on stdio"
+ ➜ Gut! Server funktioniert
+ ➜ Drücke Ctrl+C zum Stoppen
+
+ Jetzt kannst du Claude Code normal nutzen
+ (Server wird automatisch gestartet)
+
 
 Configure Claude Code (see [.mcp-config.md](.mcp-config.md) for details)
 # n8n AI Agents - Rapid Prototyping Framework
@@ -24,7 +42,7 @@ Ein komplettes Setup für schnelles Prototyping von AI Agent Workflows in n8n mi
 - **Claude Code Integration**: MCP Server für intelligente Workflow-Entwicklung
 - **Testing Framework**: Systematischer Vergleich verschiedener Prompts & Modelle
 - **Production-Ready Patterns**: Error Handling, Validation, Retry Logic
-
+- **New MCP-Server**: MCP-Server bevorzugt jetzt native nodes --> siehe Changelog
 ## 📁 Projekt-Struktur
 
 ```
