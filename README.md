@@ -1,3 +1,18 @@
+## Prerequisites
+
+This project requires the [n8n-mcp-tools](https://github.com/DEIN-USERNAME/n8n-mcp-tools) MCP Server for Claude Code integration.
+
+### Quick Setup
+```bash
+# Install MCP Server
+mkdir -p ~/mcp-servers
+cd ~/mcp-servers
+git clone git@github.com:DocSteve1/n8n-mcp-tools.git
+cd n8n-mcp-tools
+npm install
+```
+
+Configure Claude Code (see [.mcp-config.md](.mcp-config.md) for details)
 # n8n AI Agents - Rapid Prototyping Framework
 
 Ein komplettes Setup für schnelles Prototyping von AI Agent Workflows in n8n mit Fokus auf robuste Datenverarbeitung und Multi-LLM-Testing.

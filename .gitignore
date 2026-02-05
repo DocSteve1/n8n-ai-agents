@@ -46,3 +46,4 @@ credentials.json
 # Build artifacts
 dist/
 build/
+mcp-server/
