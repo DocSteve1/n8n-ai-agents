@@ -1,0 +1,376 @@
+{
+  "name": "AI Flight Search Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "flight-search",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger-001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [240, 400],
+      "webhookId": "flight-search-webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================\n// INPUT VALIDATION & SANITIZATION\n// ============================================\n\nconst items = $input.all();\nconst validated = [];\n\nfor (const item of items) {\n  const data = item.json.body || item.json;\n  const errors = [];\n  \n  // ===== VALIDATE TERMIN =====\n  if (!data.termin) {\n    errors.push('Pflichtfeld fehlt: termin');\n  } else {\n    // Validate termin.datum\n    if (!data.termin.datum) {\n      errors.push('Pflichtfeld fehlt: termin.datum');\n    } else {\n      const dateRegex = /^\\d{4}-\\d{2}-\\d{2}$/;\n      if (!dateRegex.test(data.termin.datum)) {\n        errors.push('Ungültiges Datumsformat für termin.datum. Erwartet: YYYY-MM-DD');\n      } else {\n        // Check if date is in the future\n        const appointmentDate = new Date(data.termin.datum);\n        const today = new Date();\n        today.setHours(0, 0, 0, 0);\n        if (appointmentDate < today) {\n          errors.push('Termin-Datum muss in der Zukunft liegen');\n        }\n      }\n    }\n    \n    // Validate termin.zeit_von\n    if (!data.termin.zeit_von) {\n      errors.push('Pflichtfeld fehlt: termin.zeit_von');\n    } else {\n      const timeRegex = /^([01]?\\d|2[0-3]):[0-5]\\d$/;\n      if (!timeRegex.test(data.termin.zeit_von)) {\n        errors.push('Ungültiges Zeitformat für termin.zeit_von. Erwartet: HH:MM');\n      }\n    }\n    \n    // Validate termin.zeit_bis\n    if (!data.termin.zeit_bis) {\n      errors.push('Pflichtfeld fehlt: termin.zeit_bis');\n    } else {\n      const timeRegex = /^([01]?\\d|2[0-3]):[0-5]\\d$/;\n      if (!timeRegex.test(data.termin.zeit_bis)) {\n        errors.push('Ungültiges Zeitformat für termin.zeit_bis. Erwartet: HH:MM');\n      }\n    }\n    \n    // Validate time logic (zeit_bis must be after zeit_von)\n    if (data.termin.zeit_von && data.termin.zeit_bis) {\n      const timeFrom = data.termin.zeit_von.split(':').map(Number);\n      const timeTo = data.termin.zeit_bis.split(':').map(Number);\n      const minutesFrom = timeFrom[0] * 60 + timeFrom[1];\n      const minutesTo = timeTo[0] * 60 + timeTo[1];\n      \n      if (minutesTo <= minutesFrom) {\n        errors.push('termin.zeit_bis muss nach termin.zeit_von liegen');\n      }\n    }\n  }\n  \n  // ===== VALIDATE ORT =====\n  if (!data.ort) {\n    errors.push('Pflichtfeld fehlt: ort');\n  } else if (typeof data.ort !== 'string' || data.ort.trim().length === 0) {\n    errors.push('ort muss ein nicht-leerer String sein');\n  }\n  \n  // ===== CHECK FOR ERRORS =====\n  if (errors.length > 0) {\n    validated.push({\n      json: {\n        status: 'error',\n        error_type: 'validation_error',\n        message: 'Eingabe-Validierung fehlgeschlagen',\n        errors: errors,\n        received_data: data,\n        timestamp: new Date().toISOString()\n      }\n    });\n  } else {\n    // Generate unique ID for this request\n    const requestId = `flight_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;\n    \n    validated.push({\n      json: {\n        request_id: requestId,\n        termin: {\n          datum: data.termin.datum,\n          zeit_von: data.termin.zeit_von,\n          zeit_bis: data.termin.zeit_bis\n        },\n        ort: data.ort.trim(),\n        timestamp: new Date().toISOString(),\n        validation_status: 'passed'\n      }\n    });\n  }\n}\n\nreturn validated;"
+      },
+      "id": "validate-input-002",
+      "name": "Validate Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "validation-check",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "error",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-validation-003",
+      "name": "Check Validation",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 400]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Du bist ein spezialisierter Flugsuche-Agent für Geschäftsreisen.\n\n**DEINE AUFGABE:**\nFinde die besten Tagesflüge für einen Geschäftstermin.\n\n**EINGABE-DATEN:**\n- Termin-Datum: {{ $json.termin.datum }}\n- Termin-Zeit: {{ $json.termin.zeit_von }} bis {{ $json.termin.zeit_bis }}\n- Zielort: {{ $json.ort }}\n\n**ANFORDERUNGEN:**\n1. Suche Flüge von diesen Abflughäfen: CGN (Köln), FRA (Frankfurt), DUS (Düsseldorf)\n2. **HINFLUG:** Ankunft am Zielort VOR {{ $json.termin.zeit_von }} Uhr am {{ $json.termin.datum }}\n3. **RÜCKFLUG:** Abflug vom Zielort NACH {{ $json.termin.zeit_bis }} Uhr am {{ $json.termin.datum }}\n4. Nur Tagesflüge - Hin- und Rückflug am selben Tag\n5. Bevorzuge Direktflüge, akzeptiere max. 1 Umstieg\n6. Sortiere nach Gesamtreisezeit (kürzeste zuerst)\n\n**WICHTIG:**\n- Nutze das SerpAPI Tool für JEDE Flugsuche\n- Suche systematisch von allen 3 Abflughäfen\n- Prüfe GENAU die Zeitfenster\n\n**AUSGABE-FORMAT:**\nAntworte NUR mit diesem exakten JSON-Format (kein Markdown, kein Fließtext):\n\n```json\n{\n  \"status\": \"success\",\n  \"flights\": [\n    {\n      \"outbound\": {\n        \"from\": \"CGN\",\n        \"to\": \"<ZIEL-IATA>\",\n        \"departure_time\": \"HH:MM\",\n        \"arrival_time\": \"HH:MM\",\n        \"airline\": \"<AIRLINE-NAME>\",\n        \"flight_number\": \"<FLUGNUMMER>\",\n        \"duration\": \"<DAUER in Minuten>\",\n        \"stops\": 0\n      },\n      \"return\": {\n        \"from\": \"<ZIEL-IATA>\",\n        \"to\": \"CGN\",\n        \"departure_time\": \"HH:MM\",\n        \"arrival_time\": \"HH:MM\",\n        \"airline\": \"<AIRLINE-NAME>\",\n        \"flight_number\": \"<FLUGNUMMER>\",\n        \"duration\": \"<DAUER in Minuten>\",\n        \"stops\": 0\n      },\n      \"total_price_eur\": <PREIS>,\n      \"total_duration_minutes\": <GESAMT-DAUER>\n    }\n  ],\n  \"search_summary\": {\n    \"searched_airports\": [\"CGN\", \"FRA\", \"DUS\"],\n    \"destination\": \"<ZIEL>\",\n    \"date\": \"{{ $json.termin.datum }}\",\n    \"results_found\": <ANZAHL>,\n    \"search_timestamp\": \"<ISO-TIMESTAMP>\"\n  }\n}\n```\n\n**STATUS-WERTE:**\n- `\"success\"`: Passende Flüge gefunden (dann flights-Array mit 1-3 besten Optionen)\n- `\"no_flights\"`: Keine passenden Flüge gefunden (dann flights-Array leer)\n- `\"error\"`: Technischer Fehler bei der Suche (dann zusätzlich error_message)\n\n**BEI FEHLER:**\n```json\n{\n  \"status\": \"error\",\n  \"error_message\": \"<BESCHREIBUNG>\",\n  \"flights\": []\n}\n```\n\n**BEGINNE JETZT DIE SUCHE!**",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are a specialized flight search assistant. You MUST respond ONLY with valid JSON. Never include markdown code blocks, explanations, or any text outside the JSON structure."
+        }
+      },
+      "id": "ai-agent-004",
+      "name": "AI Agent - Flight Search",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "model": "anthropic/claude-3.5-sonnet",
+        "options": {
+          "temperature": 0.3,
+          "maxTokens": 3000
+        }
+      },
+      "id": "openrouter-llm-005",
+      "name": "OpenRouter LLM",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [1120, 500],
+      "credentials": {
+        "openRouterApi": {
+          "id": "openrouter-credentials",
+          "name": "OpenRouter API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "searchEngine": "googleFlights"
+      },
+      "id": "serpapi-tool-006",
+      "name": "SerpAPI Google Flights",
+      "type": "@n8n/n8n-nodes-langchain.toolSerpApi",
+      "typeVersion": 1,
+      "position": [1120, 700],
+      "credentials": {
+        "serpApiApi": {
+          "id": "serpapi-credentials",
+          "name": "SerpAPI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================\n// PARSE & VALIDATE AGENT RESPONSE\n// ============================================\n\nconst items = $input.all();\nconst originalData = $('Validate Input').first().json;\nconst parsed = [];\n\nfor (const item of items) {\n  let agentResponse = item.json;\n  \n  try {\n    // Extract response text if needed\n    let responseText = '';\n    \n    if (typeof agentResponse === 'string') {\n      responseText = agentResponse;\n    } else if (agentResponse.output) {\n      responseText = agentResponse.output;\n    } else if (agentResponse.text) {\n      responseText = agentResponse.text;\n    } else if (agentResponse.response) {\n      responseText = agentResponse.response;\n    } else {\n      // Assume it's already parsed JSON\n      responseText = JSON.stringify(agentResponse);\n    }\n    \n    // Clean response text\n    responseText = responseText.trim();\n    \n    // Remove markdown code blocks if present\n    responseText = responseText.replace(/```json\\s*/g, '').replace(/```\\s*/g, '');\n    \n    // Try to find JSON object in text\n    let jsonMatch = responseText.match(/\\{[\\s\\S]*\\}/); \n    let parsedResponse;\n    \n    if (jsonMatch) {\n      parsedResponse = JSON.parse(jsonMatch[0]);\n    } else {\n      parsedResponse = JSON.parse(responseText);\n    }\n    \n    // ===== VALIDATE RESPONSE STRUCTURE =====\n    if (!parsedResponse.status) {\n      throw new Error('Missing required field: status');\n    }\n    \n    const validStatuses = ['success', 'no_flights', 'error'];\n    if (!validStatuses.includes(parsedResponse.status)) {\n      throw new Error(`Invalid status: ${parsedResponse.status}. Must be one of: ${validStatuses.join(', ')}`);\n    }\n    \n    if (!Array.isArray(parsedResponse.flights)) {\n      throw new Error('Missing or invalid field: flights (must be an array)');\n    }\n    \n    // ===== VALIDATE FLIGHT DATA IF SUCCESS =====\n    if (parsedResponse.status === 'success' && parsedResponse.flights.length > 0) {\n      for (const flight of parsedResponse.flights) {\n        if (!flight.outbound || !flight.return) {\n          throw new Error('Each flight must have outbound and return');\n        }\n        \n        // Validate required fields\n        const requiredOutbound = ['from', 'to', 'departure_time', 'arrival_time', 'airline'];\n        const requiredReturn = ['from', 'to', 'departure_time', 'arrival_time', 'airline'];\n        \n        for (const field of requiredOutbound) {\n          if (!flight.outbound[field]) {\n            throw new Error(`Missing outbound field: ${field}`);\n          }\n        }\n        \n        for (const field of requiredReturn) {\n          if (!flight.return[field]) {\n            throw new Error(`Missing return field: ${field}`);\n          }\n        }\n      }\n    }\n    \n    // ===== BUILD SUCCESS RESPONSE =====\n    parsed.push({\n      json: {\n        request_id: originalData.request_id,\n        status: parsedResponse.status,\n        flights: parsedResponse.flights || [],\n        search_summary: parsedResponse.search_summary || {},\n        original_request: {\n          termin: originalData.termin,\n          ort: originalData.ort\n        },\n        agent_raw_response: responseText.substring(0, 1000), // Keep first 1000 chars for logging\n        timestamp: new Date().toISOString(),\n        parsed_successfully: true\n      }\n    });\n    \n  } catch (error) {\n    // ===== PARSING FAILED =====\n    parsed.push({\n      json: {\n        request_id: originalData.request_id,\n        status: 'error',\n        error_type: 'parsing_error',\n        error_message: `Failed to parse agent response: ${error.message}`,\n        flights: [],\n        original_request: {\n          termin: originalData.termin,\n          ort: originalData.ort\n        },\n        agent_raw_response: JSON.stringify(agentResponse).substring(0, 500),\n        timestamp: new Date().toISOString(),\n        parsed_successfully: false\n      }\n    });\n  }\n}\n\nreturn parsed;"
+      },
+      "id": "parse-response-007",
+      "name": "Parse Agent Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",  
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sheet1",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Timestamp": "={{ $json.timestamp }}",
+            "Request_ID": "={{ $json.request_id }}",
+            "Termin_Datum": "={{ $json.original_request.termin.datum }}",
+            "Termin_Von": "={{ $json.original_request.termin.zeit_von }}",
+            "Termin_Bis": "={{ $json.original_request.termin.zeit_bis }}",
+            "Zielort": "={{ $json.original_request.ort }}",
+            "Status": "={{ $json.status }}",
+            "Anzahl_Fluege": "={{ $json.flights.length }}",
+            "Beste_Option": "={{ $json.flights.length > 0 ? JSON.stringify($json.flights[0]) : '' }}",
+            "Agent_Log": "={{ $json.agent_raw_response }}",
+            "Error_Details": "={{ $json.error_message || '' }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "google-sheets-008",
+      "name": "Log to Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [1560, 300],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "google-sheets-credentials",
+          "name": "Google Sheets OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({\n  request_id: $json.request_id,\n  status: $json.status,\n  termin: $json.original_request.termin,\n  zielort: $json.original_request.ort,\n  ergebnis: {\n    anzahl_fluege: $json.flights.length,\n    fluege: $json.flights\n  },\n  search_summary: $json.search_summary || {},\n  timestamp: $json.timestamp\n}, null, 2) }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "id": "webhook-response-success-009",
+      "name": "Webhook Response Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1780, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({\n  status: 'error',\n  error_type: $json.error_type || 'unknown_error',\n  message: $json.message || $json.error_message || 'Ein Fehler ist aufgetreten',\n  errors: $json.errors || [],\n  timestamp: $json.timestamp || new Date().toISOString()\n}, null, 2) }}",
+        "options": {
+          "responseCode": 400,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "id": "webhook-response-error-010",
+      "name": "Webhook Response Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [900, 520]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sheet1",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Timestamp": "={{ $json.timestamp }}",
+            "Request_ID": "={{ $json.request_id || 'N/A' }}",
+            "Termin_Datum": "",
+            "Termin_Von": "",
+            "Termin_Bis": "",
+            "Zielort": "",
+            "Status": "error",
+            "Anzahl_Fluege": "0",
+            "Beste_Option": "",
+            "Agent_Log": "",
+            "Error_Details": "={{ $json.message || JSON.stringify($json.errors) }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "google-sheets-error-011",
+      "name": "Log Error to Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [900, 680],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "google-sheets-credentials",
+          "name": "Google Sheets OAuth2"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validate Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Input": {
+      "main": [
+        [
+          {
+            "node": "Check Validation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Validation": {
+      "main": [
+        [
+          {
+            "node": "Webhook Response Error",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Log Error to Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent - Flight Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent - Flight Search": {
+      "main": [
+        [
+          {
+            "node": "Parse Agent Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Agent Response": {
+      "main": [
+        [
+          {
+            "node": "Log to Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Webhook Response Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter LLM": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent - Flight Search",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SerpAPI Google Flights": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent - Flight Search",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "createdAt": "2026-02-05T18:00:00.000Z",
+      "updatedAt": "2026-02-05T18:00:00.000Z",
+      "id": "ai-agent",
+      "name": "AI Agent"
+    },
+    {
+      "createdAt": "2026-02-05T18:00:00.000Z",
+      "updatedAt": "2026-02-05T18:00:00.000Z",
+      "id": "flight-search",
+      "name": "Flight Search"
+    }
+  ],
+  "triggerCount": 0,
+  "updatedAt": "2026-02-05T19:00:00.000Z",
+  "versionId": "1"
+}

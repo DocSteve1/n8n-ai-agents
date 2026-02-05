@@ -1,0 +1,417 @@
+{
+  "description": "Test cases for Flight Search Agent workflow",
+  "version": "1.0",
+  "test_cases": [
+    {
+      "test_id": "TC001",
+      "name": "Erfolgreiche Flugsuche - Berlin",
+      "category": "success",
+      "description": "Standardfall: Geschäftstermin in Berlin mit normalem Zeitfenster",
+      "input": {
+        "termin": {
+          "datum": "2026-03-15",
+          "zeit_von": "09:00",
+          "zeit_bis": "17:00"
+        },
+        "ort": "Berlin"
+      },
+      "expected_result": {
+        "status": "success",
+        "flights_count": ">= 1",
+        "http_status": 200
+      },
+      "notes": "Testdatum sollte in der Zukunft liegen - anpassen bei Bedarf"
+    },
+    {
+      "test_id": "TC002",
+      "name": "Erfolgreiche Flugsuche - München",
+      "category": "success",
+      "description": "Geschäftstermin in München am Nachmittag",
+      "input": {
+        "termin": {
+          "datum": "2026-04-20",
+          "zeit_von": "14:00",
+          "zeit_bis": "18:00"
+        },
+        "ort": "München"
+      },
+      "expected_result": {
+        "status": "success",
+        "flights_count": ">= 1",
+        "http_status": 200
+      }
+    },
+    {
+      "test_id": "TC003",
+      "name": "Erfolgreiche Flugsuche - Hamburg",
+      "category": "success",
+      "description": "Früher Termin in Hamburg",
+      "input": {
+        "termin": {
+          "datum": "2026-05-10",
+          "zeit_von": "08:00",
+          "zeit_bis": "12:00"
+        },
+        "ort": "Hamburg"
+      },
+      "expected_result": {
+        "status": "success",
+        "flights_count": ">= 1",
+        "http_status": 200
+      }
+    },
+    {
+      "test_id": "TC004",
+      "name": "Keine Flüge - Sehr enges Zeitfenster",
+      "category": "no_flights",
+      "description": "Termin mit sehr engem Zeitfenster (7:00-8:00) - wahrscheinlich keine passenden Flüge",
+      "input": {
+        "termin": {
+          "datum": "2026-06-01",
+          "zeit_von": "07:00",
+          "zeit_bis": "08:00"
+        },
+        "ort": "Stuttgart"
+      },
+      "expected_result": {
+        "status": "no_flights",
+        "flights_count": 0,
+        "http_status": 200
+      },
+      "notes": "Agent sollte erkennen, dass Tagesflüge in diesem Zeitfenster unmöglich sind"
+    },
+    {
+      "test_id": "TC005",
+      "name": "Keine Flüge - Exotisches Ziel",
+      "category": "no_flights",
+      "description": "Ziel ohne Direktverbindung von CGN/FRA/DUS",
+      "input": {
+        "termin": {
+          "datum": "2026-07-15",
+          "zeit_von": "10:00",
+          "zeit_bis": "16:00"
+        },
+        "ort": "Reykjavik"
+      },
+      "expected_result": {
+        "status": "no_flights",
+        "flights_count": 0,
+        "http_status": 200
+      },
+      "notes": "Tagesflüge nach Island sind sehr selten/unmöglich"
+    },
+    {
+      "test_id": "TC006",
+      "name": "Validierungsfehler - Fehlendes Datum",
+      "category": "validation_error",
+      "description": "Pflichtfeld termin.datum fehlt",
+      "input": {
+        "termin": {
+          "zeit_von": "09:00",
+          "zeit_bis": "17:00"
+        },
+        "ort": "Berlin"
+      },
+      "expected_result": {
+        "status": "error",
+        "error_type": "validation_error",
+        "errors_contains": ["Pflichtfeld fehlt: termin.datum"],
+        "http_status": 400
+      }
+    },
+    {
+      "test_id": "TC007",
+      "name": "Validierungsfehler - Ungültiges Datumsformat",
+      "category": "validation_error",
+      "description": "Datum im falschen Format",
+      "input": {
+        "termin": {
+          "datum": "15.03.2026",
+          "zeit_von": "09:00",
+          "zeit_bis": "17:00"
+        },
+        "ort": "Berlin"
+      },
+      "expected_result": {
+        "status": "error",
+        "error_type": "validation_error",
+        "errors_contains": ["Ungültiges Datumsformat"],
+        "http_status": 400
+      }
+    },
+    {
+      "test_id": "TC008",
+      "name": "Validierungsfehler - Ungültiges Zeitformat (eine Stelle)",
+      "category": "validation_error",
+      "description": "Zeit im Format H:MM statt HH:MM",
+      "input": {
+        "termin": {
+          "datum": "2026-03-15",
+          "zeit_von": "9:00",
+          "zeit_bis": "17:00"
+        },
+        "ort": "Berlin"
+      },
+      "expected_result": {
+        "status": "error",
+        "error_type": "validation_error",
+        "errors_contains": ["Ungültiges Zeitformat"],
+        "http_status": 400
+      }
+    },
+    {
+      "test_id": "TC009",
+      "name": "Validierungsfehler - Ungültige Zeit (>24h)",
+      "category": "validation_error",
+      "description": "Stunden größer als 23",
+      "input": {
+        "termin": {
+          "datum": "2026-03-15",
+          "zeit_von": "09:00",
+          "zeit_bis": "25:00"
+        },
+        "ort": "Berlin"
+      },
+      "expected_result": {
+        "status": "error",
+        "error_type": "validation_error",
+        "errors_contains": ["Ungültiges Zeitformat"],
+        "http_status": 400
+      }
+    },
+    {
+      "test_id": "TC010",
+      "name": "Validierungsfehler - Zeit-Ende vor Zeit-Start",
+      "category": "validation_error",
+      "description": "termin.zeit_bis liegt vor termin.zeit_von",
+      "input": {
+        "termin": {
+          "datum": "2026-03-15",
+          "zeit_von": "17:00",
+          "zeit_bis": "09:00"
+        },
+        "ort": "Berlin"
+      },
+      "expected_result": {
+        "status": "error",
+        "error_type": "validation_error",
+        "errors_contains": ["zeit_bis muss nach zeit_von liegen"],
+        "http_status": 400
+      }
+    },
+    {
+      "test_id": "TC011",
+      "name": "Validierungsfehler - Fehlendes Feld ort",
+      "category": "validation_error",
+      "description": "Pflichtfeld ort fehlt komplett",
+      "input": {
+        "termin": {
+          "datum": "2026-03-15",
+          "zeit_von": "09:00",
+          "zeit_bis": "17:00"
+        }
+      },
+      "expected_result": {
+        "status": "error",
+        "error_type": "validation_error",
+        "errors_contains": ["Pflichtfeld fehlt: ort"],
+        "http_status": 400
+      }
+    },
+    {
+      "test_id": "TC012",
+      "name": "Validierungsfehler - Leerer Ort",
+      "category": "validation_error",
+      "description": "Ort ist leerer String",
+      "input": {
+        "termin": {
+          "datum": "2026-03-15",
+          "zeit_von": "09:00",
+          "zeit_bis": "17:00"
+        },
+        "ort": ""
+      },
+      "expected_result": {
+        "status": "error",
+        "error_type": "validation_error",
+        "errors_contains": ["nicht-leerer String"],
+        "http_status": 400
+      }
+    },
+    {
+      "test_id": "TC013",
+      "name": "Validierungsfehler - Datum in Vergangenheit",
+      "category": "validation_error",
+      "description": "Termin-Datum liegt in der Vergangenheit",
+      "input": {
+        "termin": {
+          "datum": "2020-01-01",
+          "zeit_von": "09:00",
+          "zeit_bis": "17:00"
+        },
+        "ort": "Berlin"
+      },
+      "expected_result": {
+        "status": "error",
+        "error_type": "validation_error",
+        "errors_contains": ["Zukunft liegen"],
+        "http_status": 400
+      }
+    },
+    {
+      "test_id": "TC014",
+      "name": "Erfolgreiche Flugsuche - Ganztägig",
+      "category": "success",
+      "description": "Langer Termin über ganzen Arbeitstag",
+      "input": {
+        "termin": {
+          "datum": "2026-08-20",
+          "zeit_von": "08:00",
+          "zeit_bis": "18:00"
+        },
+        "ort": "Frankfurt"
+      },
+      "expected_result": {
+        "status": "success",
+        "flights_count": ">= 1",
+        "http_status": 200
+      }
+    },
+    {
+      "test_id": "TC015",
+      "name": "Erfolgreiche Flugsuche - Spätnachmittag",
+      "category": "success",
+      "description": "Termin am späten Nachmittag",
+      "input": {
+        "termin": {
+          "datum": "2026-09-10",
+          "zeit_von": "15:00",
+          "zeit_bis": "19:00"
+        },
+        "ort": "Wien"
+      },
+      "expected_result": {
+        "status": "success",
+        "flights_count": ">= 1",
+        "http_status": 200
+      }
+    },
+    {
+      "test_id": "TC016",
+      "name": "Validierungsfehler - Mehrere Fehler gleichzeitig",
+      "category": "validation_error",
+      "description": "Mehrere Validierungsfehler auf einmal",
+      "input": {
+        "termin": {
+          "datum": "15-03-2026",
+          "zeit_von": "25:00",
+          "zeit_bis": "9:00"
+        },
+        "ort": ""
+      },
+      "expected_result": {
+        "status": "error",
+        "error_type": "validation_error",
+        "errors_count": ">= 3",
+        "http_status": 400
+      }
+    },
+    {
+      "test_id": "TC017",
+      "name": "Edge Case - Mitternacht als Ende",
+      "category": "validation_error",
+      "description": "zeit_bis ist 00:00 - sollte als vor zeit_von erkannt werden",
+      "input": {
+        "termin": {
+          "datum": "2026-03-15",
+          "zeit_von": "09:00",
+          "zeit_bis": "00:00"
+        },
+        "ort": "Berlin"
+      },
+      "expected_result": {
+        "status": "error",
+        "error_type": "validation_error",
+        "errors_contains": ["zeit_bis muss nach zeit_von liegen"],
+        "http_status": 400
+      }
+    },
+    {
+      "test_id": "TC018",
+      "name": "Edge Case - Gleiche Start- und Endzeit",
+      "category": "validation_error",
+      "description": "zeit_von und zeit_bis sind identisch",
+      "input": {
+        "termin": {
+          "datum": "2026-03-15",
+          "zeit_von": "09:00",
+          "zeit_bis": "09:00"
+        },
+        "ort": "Berlin"
+      },
+      "expected_result": {
+        "status": "error",
+        "error_type": "validation_error",
+        "errors_contains": ["zeit_bis muss nach zeit_von liegen"],
+        "http_status": 400
+      }
+    },
+    {
+      "test_id": "TC019",
+      "name": "Erfolgreiche Flugsuche - Schweiz",
+      "category": "success",
+      "description": "Internationale Flüge innerhalb Europa (Zürich)",
+      "input": {
+        "termin": {
+          "datum": "2026-10-05",
+          "zeit_von": "10:00",
+          "zeit_bis": "16:00"
+        },
+        "ort": "Zürich"
+      },
+      "expected_result": {
+        "status": "success",
+        "flights_count": ">= 1",
+        "http_status": 200
+      }
+    },
+    {
+      "test_id": "TC020",
+      "name": "Erfolgreiche Flugsuche - Österreich",
+      "category": "success",
+      "description": "Kurze Strecke nach Wien",
+      "input": {
+        "termin": {
+          "datum": "2026-11-12",
+          "zeit_von": "11:00",
+          "zeit_bis": "15:00"
+        },
+        "ort": "Wien"
+      },
+      "expected_result": {
+        "status": "success",
+        "flights_count": ">= 1",
+        "http_status": 200
+      }
+    }
+  ],
+  "curl_examples": {
+    "TC001": "curl -X POST https://your-n8n.com/webhook/flight-search -H 'Content-Type: application/json' -d '{\"termin\":{\"datum\":\"2026-03-15\",\"zeit_von\":\"09:00\",\"zeit_bis\":\"17:00\"},\"ort\":\"Berlin\"}'",
+    "TC006": "curl -X POST https://your-n8n.com/webhook/flight-search -H 'Content-Type: application/json' -d '{\"termin\":{\"zeit_von\":\"09:00\",\"zeit_bis\":\"17:00\"},\"ort\":\"Berlin\"}'",
+    "TC013": "curl -X POST https://your-n8n.com/webhook/flight-search -H 'Content-Type: application/json' -d '{\"termin\":{\"datum\":\"2020-01-01\",\"zeit_von\":\"09:00\",\"zeit_bis\":\"17:00\"},\"ort\":\"Berlin\"}'"
+  },
+  "test_statistics": {
+    "total_tests": 20,
+    "categories": {
+      "success": 8,
+      "no_flights": 2,
+      "validation_error": 10
+    }
+  },
+  "notes": [
+    "Vor dem Testen alle Datum-Werte auf zukünftige Daten anpassen",
+    "SerpAPI Rate Limits beachten (gratis: 100 Suchen/Monat)",
+    "Für automatisierte Tests: Test-Daten in n8n importieren und mit 'Execute Workflow' Node durchlaufen",
+    "Google Sheets sollte nach Tests geprüft werden auf korrekte Log-Einträge"
+  ]
+}

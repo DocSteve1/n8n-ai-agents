@@ -1,36 +1,29 @@
 ## Prerequisites
 
-This project requires the [n8n-mcp-tools](https://github.com/DEIN-USERNAME/n8n-mcp-tools) MCP Server for Claude Code integration.
+Der MCP Server ist als Git-Submodul unter `mcp-servers/n8n-mcp-tools/` enthalten.
 
 ### Quick Setup
 ```bash
-
-# Install this project
+# Projekt klonen
 git clone git@github.com:DocSteve1/n8n-ai-agents.git
+cd n8n-ai-agents
 
-# Install MCP Server
-mkdir -p ~/mcp-servers
-cd ~/mcp-servers
-git clone git@github.com:DocSteve1/n8n-mcp-tools.git
-cd n8n-mcp-tools
+# MCP Server Dependencies installieren
+cd mcp-servers/n8n-mcp-tools
 npm install
 ```
 
 ### Test ob server.js läuft
 ```bash
-cd ~/n8n-ai-agents/mcp-server
-npm start
+cd mcp-servers/n8n-mcp-tools
+node server.js
 ```
 
-Siehst du: "n8n AI Agents MCP Server running on stdio"
- ➜ Gut! Server funktioniert
- ➜ Drücke Ctrl+C zum Stoppen
+Siehst du: `n8n AI Agents MCP Server running on stdio` → Server funktioniert (Ctrl+C zum Stoppen).
 
- Jetzt kannst du Claude Code normal nutzen
- (Server wird automatisch gestartet)
+### Claude Code konfigurieren
 
-
-Configure Claude Code (see [.mcp-config.md](.mcp-config.md) for details)
+Siehe [.mcp-config.md](.mcp-config.md) für Details.
 # n8n AI Agents - Rapid Prototyping Framework
 
 Ein komplettes Setup für schnelles Prototyping von AI Agent Workflows in n8n mit Fokus auf robuste Datenverarbeitung und Multi-LLM-Testing.
@@ -47,20 +40,23 @@ Ein komplettes Setup für schnelles Prototyping von AI Agent Workflows in n8n mi
 
 ```
 n8n-ai-agents/
+├── .claude/
+│   └── settings.local.json          # MCP Server Config (gitignored)
 ├── docs/
-│   └── n8n-agent-guide.md          # Umfassende Dokumentation
-├── mcp-server/                      # Claude Code MCP Server
-│   ├── server.js                    # Server Implementation
-│   ├── data/                        # Best Practices & Templates
-│   └── README.md
-├── workflows/                       # n8n Workflow JSONs
+│   └── n8n-agent-guide.md           # Umfassende Dokumentation
+├── mcp-servers/
+│   └── n8n-mcp-tools/               # Claude Code MCP Server
+│       ├── server.js                 # Server Implementation
+│       ├── data/                     # Best Practices & Templates
+│       └── README.md
+├── workflows/                        # n8n Workflow JSONs
 │   └── entity-extraction-comparison.json
-├── prompts/                         # Prompt-Versionen
-├── test-data/                       # Test Cases
+├── prompts/                          # Prompt-Versionen
+├── test-data/                        # Test Cases
 │   └── sample-tests.json
-├── results/                         # Test-Ergebnisse
-├── QUICKSTART.md                    # 15-Minuten Start Guide
-└── README.md                        # Diese Datei
+├── results/                          # Test-Ergebnisse
+├── QUICKSTART.md                     # 15-Minuten Start Guide
+└── README.md                         # Diese Datei
 ```
 
 ## 🚀 Quick Start
@@ -76,7 +72,7 @@ n8n-ai-agents/
 
 1. **MCP Server Setup**
 ```bash
-cd mcp-server
+cd mcp-servers/n8n-mcp-tools
 npm install
 ```
 
@@ -89,13 +85,13 @@ ollama serve
 
 3. **Claude Code konfigurieren** (optional)
 
-Editiere `~/.config/claude-code/config.json`:
+Erstelle `.claude/settings.local.json` im Projektroot (siehe [.mcp-config.md](.mcp-config.md)):
 ```json
 {
   "mcpServers": {
     "n8n-ai-agents": {
       "command": "node",
-      "args": ["/absoluter/pfad/zu/n8n-ai-agents/mcp-server/server.js"]
+      "args": ["/ABSOLUTER/PFAD/ZU/mcp-servers/n8n-mcp-tools/server.js"]
     }
   }
 }
@@ -110,7 +106,7 @@ Editiere `~/.config/claude-code/config.json`:
 ### Kern-Dokumentation
 - **[n8n Agent Guide](docs/n8n-agent-guide.md)** - Vollständige Anleitung für robuste Workflows
 - **[Quick Start](QUICKSTART.md)** - 15-Minuten Einstieg
-- **[MCP Server README](mcp-server/README.md)** - Claude Code Integration
+- **[MCP Server README](mcp-servers/n8n-mcp-tools/README.md)** - Claude Code Integration
 
 ### Wichtige Konzepte
 
@@ -245,6 +241,7 @@ Der MCP Server bietet:
 - `validate_workflow_json` - Workflows validieren
 - `get_prompt_template` - Optimierte Prompts
 - `analyze_test_results` - Ergebnis-Analyse
+- `find_native_node` - Native n8n-Nodes für Services finden
 
 ### Beispiel-Nutzung
 ```bash

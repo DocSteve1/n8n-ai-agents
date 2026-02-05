@@ -37,7 +37,10 @@ results/*.csv
 .n8n/
 
 # MCP Server
-mcp-server/node_modules/
+mcp-servers/
+
+# Claude Code
+.claude/settings.local.json
 
 # Private/local configs
 config.local.json
@@ -46,4 +49,3 @@ credentials.json
 # Build artifacts
 dist/
 build/
-mcp-server/
