@@ -24,10 +24,10 @@ Benötigt:
 ### 3️⃣ Workflow aktivieren & testen
 ```bash
 # Nach Aktivierung bekommst du eine Webhook URL
-POST https://your-n8n.com/webhook/flight-search
+POST http://localhost:5678/webhook/flight-search
 
 # Test-Request
-curl -X POST https://your-n8n.com/webhook/flight-search \
+curl -X POST http://localhost:5678/webhook/flight-search \
   -H "Content-Type: application/json" \
   -d '{
     "termin": {
@@ -176,12 +176,12 @@ Siehe: `test-data/flight-search-test-cases.json`
 **Quick-Test:**
 ```bash
 # Success Test
-curl -X POST https://your-n8n.com/webhook/flight-search \
+curl -X POST http://localhost:5678/webhook/flight-search \
   -H "Content-Type: application/json" \
   -d '{"termin":{"datum":"2026-03-15","zeit_von":"09:00","zeit_bis":"17:00"},"ort":"Berlin"}'
 
 # Error Test (fehlendes Datum)
-curl -X POST https://your-n8n.com/webhook/flight-search \
+curl -X POST http://localhost:5678/webhook/flight-search \
   -H "Content-Type: application/json" \
   -d '{"termin":{"zeit_von":"09:00","zeit_bis":"17:00"},"ort":"Berlin"}'
 ```
@@ -240,7 +240,7 @@ Model: "google/gemini-flash-1.5"        // Ebenfalls günstig
 ### 1. Geschäftsreise-Portal
 ```javascript
 // Integration in deine App:
-const response = await fetch('https://n8n.com/webhook/flight-search', {
+const response = await fetch('http://localhost:5678/webhook/flight-search', {
   method: 'POST',
   headers: {'Content-Type': 'application/json'},
   body: JSON.stringify({

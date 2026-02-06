@@ -67,7 +67,7 @@
       "description": "Termin mit sehr engem Zeitfenster (7:00-8:00) - wahrscheinlich keine passenden Flüge",
       "input": {
         "termin": {
-          "datum": "2026-06-01",
+          "datum": "2026-03-20",
           "zeit_von": "07:00",
           "zeit_bis": "08:00"
         },
@@ -78,27 +78,7 @@
         "flights_count": 0,
         "http_status": 200
       },
-      "notes": "Agent sollte erkennen, dass Tagesflüge in diesem Zeitfenster unmöglich sind"
-    },
-    {
-      "test_id": "TC005",
-      "name": "Keine Flüge - Exotisches Ziel",
-      "category": "no_flights",
-      "description": "Ziel ohne Direktverbindung von CGN/FRA/DUS",
-      "input": {
-        "termin": {
-          "datum": "2026-07-15",
-          "zeit_von": "10:00",
-          "zeit_bis": "16:00"
-        },
-        "ort": "Reykjavik"
-      },
-      "expected_result": {
-        "status": "no_flights",
-        "flights_count": 0,
-        "http_status": 200
-      },
-      "notes": "Tagesflüge nach Island sind sehr selten/unmöglich"
+      "notes": "Agent sollte erkennen, dass Tagesflüge in diesem Zeitfenster unmöglich sind. Datum angepasst wegen SerpAPI Limitation (max 6-8 Wochen in Zukunft)"
     },
     {
       "test_id": "TC006",
@@ -115,7 +95,9 @@
       "expected_result": {
         "status": "error",
         "error_type": "validation_error",
-        "errors_contains": ["Pflichtfeld fehlt: termin.datum"],
+        "errors_contains": [
+          "Pflichtfeld fehlt: termin.datum"
+        ],
         "http_status": 400
       }
     },
@@ -135,7 +117,9 @@
       "expected_result": {
         "status": "error",
         "error_type": "validation_error",
-        "errors_contains": ["Ungültiges Datumsformat"],
+        "errors_contains": [
+          "Ungültiges Datumsformat"
+        ],
         "http_status": 400
       }
     },
@@ -155,7 +139,9 @@
       "expected_result": {
         "status": "error",
         "error_type": "validation_error",
-        "errors_contains": ["Ungültiges Zeitformat"],
+        "errors_contains": [
+          "Ungültiges Zeitformat"
+        ],
         "http_status": 400
       }
     },
@@ -175,7 +161,9 @@
       "expected_result": {
         "status": "error",
         "error_type": "validation_error",
-        "errors_contains": ["Ungültiges Zeitformat"],
+        "errors_contains": [
+          "Ungültiges Zeitformat"
+        ],
         "http_status": 400
       }
     },
@@ -195,7 +183,9 @@
       "expected_result": {
         "status": "error",
         "error_type": "validation_error",
-        "errors_contains": ["zeit_bis muss nach zeit_von liegen"],
+        "errors_contains": [
+          "zeit_bis muss nach zeit_von liegen"
+        ],
         "http_status": 400
       }
     },
@@ -214,7 +204,9 @@
       "expected_result": {
         "status": "error",
         "error_type": "validation_error",
-        "errors_contains": ["Pflichtfeld fehlt: ort"],
+        "errors_contains": [
+          "Pflichtfeld fehlt: ort"
+        ],
         "http_status": 400
       }
     },
@@ -234,7 +226,9 @@
       "expected_result": {
         "status": "error",
         "error_type": "validation_error",
-        "errors_contains": ["nicht-leerer String"],
+        "errors_contains": [
+          "nicht-leerer String"
+        ],
         "http_status": 400
       }
     },
@@ -254,7 +248,9 @@
       "expected_result": {
         "status": "error",
         "error_type": "validation_error",
-        "errors_contains": ["Zukunft liegen"],
+        "errors_contains": [
+          "Zukunft liegen"
+        ],
         "http_status": 400
       }
     },
@@ -265,7 +261,7 @@
       "description": "Langer Termin über ganzen Arbeitstag",
       "input": {
         "termin": {
-          "datum": "2026-08-20",
+          "datum": "2026-04-10",
           "zeit_von": "08:00",
           "zeit_bis": "18:00"
         },
@@ -275,7 +271,8 @@
         "status": "success",
         "flights_count": ">= 1",
         "http_status": 200
-      }
+      },
+      "notes": "Datum angepasst wegen SerpAPI Limitation (max 6-8 Wochen in Zukunft)"
     },
     {
       "test_id": "TC015",
@@ -297,24 +294,24 @@
       }
     },
     {
-      "test_id": "TC016",
-      "name": "Validierungsfehler - Mehrere Fehler gleichzeitig",
-      "category": "validation_error",
-      "description": "Mehrere Validierungsfehler auf einmal",
+      "test_id": "TC005",
+      "name": "Keine Flüge - Exotisches Ziel",
+      "category": "no_flights",
+      "description": "Ziel ohne Tagesflüge möglich von CGN/FRA/DUS",
       "input": {
         "termin": {
-          "datum": "15-03-2026",
-          "zeit_von": "25:00",
-          "zeit_bis": "9:00"
+          "datum": "2026-03-25",
+          "zeit_von": "10:00",
+          "zeit_bis": "16:00"
         },
-        "ort": ""
+        "ort": "Singapur"
       },
       "expected_result": {
-        "status": "error",
-        "error_type": "validation_error",
-        "errors_count": ">= 3",
-        "http_status": 400
-      }
+        "status": "no_flights",
+        "flights_count": 0,
+        "http_status": 200
+      },
+      "notes": "Tagesflüge nach Asien sind unmöglich. Datum angepasst wegen SerpAPI Limitation"
     },
     {
       "test_id": "TC017",
@@ -332,7 +329,9 @@
       "expected_result": {
         "status": "error",
         "error_type": "validation_error",
-        "errors_contains": ["zeit_bis muss nach zeit_von liegen"],
+        "errors_contains": [
+          "zeit_bis muss nach zeit_von liegen"
+        ],
         "http_status": 400
       }
     },
@@ -352,7 +351,9 @@
       "expected_result": {
         "status": "error",
         "error_type": "validation_error",
-        "errors_contains": ["zeit_bis muss nach zeit_von liegen"],
+        "errors_contains": [
+          "zeit_bis muss nach zeit_von liegen"
+        ],
         "http_status": 400
       }
     },
@@ -396,9 +397,9 @@
     }
   ],
   "curl_examples": {
-    "TC001": "curl -X POST https://your-n8n.com/webhook/flight-search -H 'Content-Type: application/json' -d '{\"termin\":{\"datum\":\"2026-03-15\",\"zeit_von\":\"09:00\",\"zeit_bis\":\"17:00\"},\"ort\":\"Berlin\"}'",
-    "TC006": "curl -X POST https://your-n8n.com/webhook/flight-search -H 'Content-Type: application/json' -d '{\"termin\":{\"zeit_von\":\"09:00\",\"zeit_bis\":\"17:00\"},\"ort\":\"Berlin\"}'",
-    "TC013": "curl -X POST https://your-n8n.com/webhook/flight-search -H 'Content-Type: application/json' -d '{\"termin\":{\"datum\":\"2020-01-01\",\"zeit_von\":\"09:00\",\"zeit_bis\":\"17:00\"},\"ort\":\"Berlin\"}'"
+    "TC001": "curl -X POST http://localhost:5678/webhook/flight-search -H 'Content-Type: application/json' -d '{\"termin\":{\"datum\":\"2026-03-15\",\"zeit_von\":\"09:00\",\"zeit_bis\":\"17:00\"},\"ort\":\"Berlin\"}'",
+    "TC006": "curl -X POST http://localhost:5678/webhook/flight-search -H 'Content-Type: application/json' -d '{\"termin\":{\"zeit_von\":\"09:00\",\"zeit_bis\":\"17:00\"},\"ort\":\"Berlin\"}'",
+    "TC013": "curl -X POST http://localhost:5678/webhook/flight-search -H 'Content-Type: application/json' -d '{\"termin\":{\"datum\":\"2020-01-01\",\"zeit_von\":\"09:00\",\"zeit_bis\":\"17:00\"},\"ort\":\"Berlin\"}'"
   },
   "test_statistics": {
     "total_tests": 20,

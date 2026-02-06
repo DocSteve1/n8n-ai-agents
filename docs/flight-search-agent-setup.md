@@ -95,7 +95,7 @@ https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit
 
 1. Rechts oben: **Activate** Schalter auf **ON**
 2. **Webhook URL** wird generiert
-3. URL kopieren (z.B. `https://your-n8n.com/webhook/flight-search`)
+3. URL kopieren (z.B. `http://localhost:5678/webhook/flight-search`)
 
 ---
 
@@ -104,7 +104,7 @@ https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit
 ### Webhook Endpoint
 
 ```
-POST https://your-n8n.com/webhook/flight-search
+POST http://localhost:5678/webhook/flight-search
 Content-Type: application/json
 ```
 
@@ -249,7 +249,7 @@ Content-Type: application/json
 ### Test 1: Erfolgreiche Suche (Berlin)
 
 ```bash
-curl -X POST https://your-n8n.com/webhook/flight-search \
+curl -X POST http://localhost:5678/webhook/flight-search \
   -H "Content-Type: application/json" \
   -d '{
     "termin": {
@@ -264,7 +264,7 @@ curl -X POST https://your-n8n.com/webhook/flight-search \
 ### Test 2: Erfolgreiche Suche (München)
 
 ```bash
-curl -X POST https://your-n8n.com/webhook/flight-search \
+curl -X POST http://localhost:5678/webhook/flight-search \
   -H "Content-Type: application/json" \
   -d '{
     "termin": {
@@ -279,7 +279,7 @@ curl -X POST https://your-n8n.com/webhook/flight-search \
 ### Test 3: Validierungs-Fehler (fehlendes Datum)
 
 ```bash
-curl -X POST https://your-n8n.com/webhook/flight-search \
+curl -X POST http://localhost:5678/webhook/flight-search \
   -H "Content-Type: application/json" \
   -d '{
     "termin": {
@@ -295,7 +295,7 @@ curl -X POST https://your-n8n.com/webhook/flight-search \
 ### Test 4: Validierungs-Fehler (ungültiges Zeitformat)
 
 ```bash
-curl -X POST https://your-n8n.com/webhook/flight-search \
+curl -X POST http://localhost:5678/webhook/flight-search \
   -H "Content-Type: application/json" \
   -d '{
     "termin": {
